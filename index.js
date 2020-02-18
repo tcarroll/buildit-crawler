@@ -5,10 +5,14 @@ const https = require('https')
 
 const extractDomainName = url => {
   let domainName = ''
-  const hostname = new URL(url).hostname
-  if (hostname) {
-    const components = hostname.split('.')
-    domainName = components.slice(-2).join('.')
+  try {
+    const { hostname, protocol } = new URL(url)
+    if (protocol && hostname) {
+      const components = hostname.split('.')
+      domainName = components.slice(-2).join('.')
+    }
+  } catch (exception) {
+    console.warn(`Could not determine domain name for the url "${url}"`)
   }
   return domainName
 }
@@ -19,16 +23,22 @@ const extractDomainName = url => {
  * @param {Function} fetch   Function to retrieve content at given url.
  * @returns {Promise<*>}
  */
-const handleRedirect = async (location, fetch) => {
-  console.info(`Redirected to: ${location}`)
-  if (location && (typeof fetch === 'function')) {
-    return fetch(location)
-  }
+const handleRedirect = (location, fetch) => {
+  console.log('handleRedirect')
+  return new Promise((resolve, reject) => {
+    if (location && (typeof fetch === 'function')) {
+      resolve(fetchUrl(location))
+    } else {
+      reject()
+    }
+  }).catch(exception => {
+  })
 }
 
-const fetchUrl = async (url) => {
-  const protocol = (url.indexOf('https') >= 0) ? https : http
+const fetchUrl = (url) => {
+  console.log(`fetchUrl: url="${url}"`)
   return new Promise((resolve, reject) => {
+    const protocol = (url.indexOf('https') >= 0) ? https : http
     protocol.get(url, response => {
       const { statusCode, statusMessage } = response
       if (statusCode === 200) {
@@ -44,15 +54,15 @@ const fetchUrl = async (url) => {
           resolve(handleRedirect(response.headers.location, fetchUrl))
         }
       } else {
-        throw(`An error occurred. HTTP status code: ${statusCode}. HTTP status message: ${statusMessage}`)
+        reject(`An error occurred. HTTP status code: ${statusCode}. HTTP status message: ${statusMessage}`)
       }
     })
+  }).catch (exception => {
   })
 }
 
 const findLinks = markup => {
   let links = []
-  console.log('-----------------------------------')
   let i = markup.indexOf('href')
   let left = 0
   let leftQuote
@@ -61,43 +71,61 @@ const findLinks = markup => {
     if (i === -1) {
       break;
     } else {
-      while (markup.charAt(left + i++) !== '=')
-      for (let j = left + i; j < markup.length; j++) {
-        const c = markup.charAt(j)
-        if (c === '\'') {
-          leftQuote = j
-          rightQuote = markup.slice(j + 1).indexOf('\'')
-          break
-        } else if (c === '\"') {
-          leftQuote = j
-          rightQuote = markup.slice(j + 1).indexOf('\"')
+      let c
+      for (c = 4; c < 50; c++) {
+        if (markup.charAt(left + i + c) === '=') {
+          i += c
           break
         }
       }
-      console.log(`Found href: "${markup.slice(leftQuote + 1, leftQuote + 1 + rightQuote)}"`)
-      left += i + rightQuote + 1
+      if (c < 50) {
+        let j
+        for (j = 0; j < 100; j++) {
+          const c = markup.charAt(left + i + j)
+          if (c === '\'') {
+            leftQuote = left + i + j
+            rightQuote = markup.slice(left + j + i + 1).indexOf('\'')
+            break
+          } else if (c === '\"') {
+            leftQuote = left + i + j
+            rightQuote = markup.slice(left + j + i + 1).indexOf('\"')
+            break
+          }
+        }
+        if (j < 100) {
+          const link = markup.slice(leftQuote + 1, leftQuote + 1 + rightQuote)
+          links.push(link)
+          left += i + rightQuote + 1
+        } else {
+          left += 1
+        }
+      } else {
+        left += 4
+      }
       i = markup.slice(left).indexOf('href')
     }
   } while (left < markup.length)
-  console.log('===================================')
   return links
 }
 
-const crawl = async (url, domain, visitedLinks) => {
-  try {
-    const page = await fetchUrl(url)
-    const links = findLinks(page)
-    links.forEach(link => {
-      if (!visitedLinks.hasOwnProperty(link)) {
-        console.info(`Found link '${link}'`)
-        if (link.indexOf(domainName) !== -1) {
-          crawl(link, domain, visitedLinks)
-        }
+const crawl = (url, domain, visitedLinks) => {
+  console.log(`crawl: url="${url}"`)
+  return new Promise((resolve, reject) => {
+    fetchUrl(url).then(page => {
+      if (page) {
+        const links = findLinks(page)
+        links.forEach(link => {
+          if (!visitedLinks[link]) {
+            visitedLinks[link] = true
+            if (extractDomainName(link) === domainName) {
+              resolve(crawl(link, domain, visitedLinks))
+            }
+          }
+        })
       }
     })
-  } catch (exception) {
-    console.error(exception)
-  }
+  }).catch (exception => {
+  })
 }
 
 let url = 'http://wiprodigital.com/'
@@ -106,6 +134,13 @@ if (process.argv.length > 2) {
 }
 console.info(`Starting crawl at "${url}"`)
 const domainName = extractDomainName(url)
-console.info(`Limiting crawl to the domain "${domainName}"`)
+console.log(`Limiting crawl to the domain "${domainName}"`);
 const visitedLinks = {}
-crawl(url, domainName, visitedLinks)
+crawl(url, domainName, visitedLinks).then(links => {
+  console.log('LINKS')
+  if (links) {
+    for (let link in links) {
+      console.log(` ${link}`)
+    }
+  }
+})

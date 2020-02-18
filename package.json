@@ -4,6 +4,7 @@
   "description": "Web crawler that crawls wiprodigital.com.",
   "main": "index.js",
   "scripts": {
+    "start": "node ./index.js http://wiprodigital.com/",
     "test": "test"
   },
   "repository": {
