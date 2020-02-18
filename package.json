@@ -1,0 +1,19 @@
+{
+  "name": "buildit-crawler",
+  "version": "1.0.0",
+  "description": "Web crawler that crawls wiprodigital.com.",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/tcarroll/buildit-crawler.git"
+  },
+  "author": "Tom Carroll",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tcarroll/buildit-crawler/issues"
+  },
+  "homepage": "https://github.com/tcarroll/buildit-crawler#readme"
+}
