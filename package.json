@@ -5,16 +5,19 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./index.js http://wiprodigital.com/",
-    "test": "test"
+    "test": "node tests/index.test.js"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/tcarroll/buildit-crawler.git"
   },
   "author": "Tom Carroll",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/tcarroll/buildit-crawler/issues"
   },
-  "homepage": "https://github.com/tcarroll/buildit-crawler#readme"
+  "homepage": "https://github.com/tcarroll/buildit-crawler#readme",
+  "devDependencies": {
+    "tap": "^14.10.6"
+  }
 }
